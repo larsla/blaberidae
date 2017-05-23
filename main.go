@@ -63,7 +63,7 @@ func main() {
 	defer db3.Stop()
 	defer os.RemoveAll("./node3")
 
-	nodes := []*Proc{db1, db2, db3}
+	nodes := []*Proc{db2, db3}
 
 	createDB, err := Start("createDB", binaryName, []string{"sql", "--insecure", "-e", "CREATE DATABASE test;"})
 	if err != nil {
