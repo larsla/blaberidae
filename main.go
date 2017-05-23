@@ -78,6 +78,7 @@ func main() {
 	defer grapher.Render(fmt.Sprintf("%s.png", time.Now().String()))
 	defer grapher.Stop()
 
+	start := false
 	dones := make([]chan bool, 0)
 	for i := 0; i < *numThreads; i++ {
 		done := make(chan bool)
@@ -110,6 +111,12 @@ func main() {
 			}
 			log.Printf("%v Inserted %v records\n", mynum, len(nums))
 
+			for {
+				if start {
+					break
+				}
+				time.Sleep(time.Millisecond * 100)
+			}
 			for j := 0; j < *numIterations; j++ {
 				_, err = bench.Increment(nums)
 				if err != nil {
@@ -136,6 +143,8 @@ func main() {
 		}(i)
 		time.Sleep(time.Millisecond * 1000)
 	}
+
+	start = true
 
 	// catch ctrl+c
 	c := make(chan os.Signal, 2)
