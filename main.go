@@ -84,6 +84,9 @@ func main() {
 	stats := NewSysStats(grapher)
 	defer stats.Stop()
 
+	cockroachStats := NewCockroachStats(grapher)
+	defer cockroachStats.Stop()
+
 	stop := false
 	start := false
 	dones := make([]chan bool, 0)
