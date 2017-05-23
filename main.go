@@ -37,7 +37,7 @@ func main() {
 		}
 	}
 
-	db1, err := Start("db1", binaryName, []string{"start", "--insecure", "--store=node1", "--http-port=8083"})
+	db1, err := Start("db1", binaryName, []string{"start", "--insecure", "--store=node1", "--http-port=8080"})
 	if err != nil {
 		log.Println(err)
 		return
