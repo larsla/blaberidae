@@ -19,6 +19,7 @@ func main() {
 
 	numThreads := flag.Int("threads", 10, "Number of threads to run")
 	numIterations := flag.Int("iterations", 10, "Number of iterations")
+	killNodes := flag.Bool("kill_nodes", false, "Randomly kill nodes during run")
 	flag.Parse()
 
 	binaryName := fmt.Sprintf("./cockroach-latest.%s-%s/cockroach", runtime.GOOS, runtime.GOARCH)
@@ -165,17 +166,19 @@ func main() {
 
 	restartLock := false
 	restartChan := make(chan bool)
-	go func() {
-		for {
-			if stop {
-				return
+	if *killNodes {
+		go func() {
+			for {
+				if stop {
+					return
+				}
+				time.Sleep(time.Second * time.Duration(rand.Intn(60)))
+				if !restartLock {
+					restartChan <- true
+				}
 			}
-			time.Sleep(time.Second * time.Duration(rand.Intn(60)))
-			if !restartLock {
-				restartChan <- true
-			}
-		}
-	}()
+		}()
+	}
 
 	lastPrinted := time.Now()
 	threads := len(dones)
