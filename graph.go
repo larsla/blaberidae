@@ -158,10 +158,10 @@ func (g *Grapher) render(name string, series []chart.Series) error {
 				}
 				return ""
 			},
-			// Range: &chart.ContinuousRange{
-			// 	Min: 0,
-			// 	Max: 500,
-			// },
+			Range: &chart.ContinuousRange{
+				Min: 0,
+				Max: 500,
+			},
 		},
 		Series: series,
 		Background: chart.Style{
