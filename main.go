@@ -205,6 +205,7 @@ func main() {
 				if !restartLock {
 					restartLock = true
 					node := nodes[rand.Intn(len(nodes))]
+					log.Println("Restarting " + node.Name)
 					grapher.Event(Event{
 						Time: time.Now(),
 						Name: "Restarted " + node.Name,

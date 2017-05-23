@@ -51,6 +51,12 @@ func Start(name, p string, args []string) (*Proc, error) {
 }
 
 func (p *Proc) check() {
+	defer func() {
+		if r := recover(); r != nil {
+			p.Running = false
+			p.Stop()
+		}
+	}()
 	state, err := p.Process.Wait()
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -63,6 +69,9 @@ func (p *Proc) check() {
 }
 
 func (p *Proc) Stop() error {
+	if p.Process == nil {
+		return fmt.Errorf("No process")
+	}
 	return p.Process.Kill()
 }
 
