@@ -95,6 +95,8 @@ func (g *Grapher) Stop() {
 
 func (g *Grapher) Render(name string) error {
 
+	log.Println("Starting to render graphs")
+
 	g.stopTime = time.Now()
 
 	annotations := make([]chart.Value2, 0)
@@ -116,12 +118,14 @@ func (g *Grapher) Render(name string) error {
 	}
 
 	for seriesName := range g.series {
+		log.Printf("Preparing graph %s", seriesName)
 		series := make([]chart.Series, 0)
 		series = append(series, chart.AnnotationSeries{
 			Annotations: annotations,
 		})
 		max := float64(100)
-		for _, l := range g.series[seriesName] {
+		for label, l := range g.series[seriesName] {
+			log.Printf("Processing label %s", label)
 			for _, v := range l.YValues {
 				if v > max {
 					max = v
@@ -139,6 +143,7 @@ func (g *Grapher) Render(name string) error {
 }
 
 func (g *Grapher) render(name string, series []chart.Series, max float64) error {
+	log.Printf("Rendering file %s", name)
 	graph := chart.Chart{
 		Width:  2560,
 		Height: 1440,
