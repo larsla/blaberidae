@@ -66,7 +66,10 @@ func (s *SQLTest) Insert(num int) error {
 	for i := 0; i < num; i++ {
 		insertStart := time.Now()
 		if _, err := s.db.Exec(fmt.Sprintf("INSERT INTO %s (value) VALUES (0)", s.name)); err != nil {
-			return err
+			if !s.reconnectIfDisconnected(err) {
+				return err
+			}
+			return s.Insert(num)
 		}
 		inserts = append(inserts, time.Since(insertStart))
 	}
