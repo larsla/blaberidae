@@ -62,21 +62,31 @@ func (s *SQLTest) Create(num int) ([]int, error) {
 }
 
 func (s *SQLTest) Insert(num int) error {
+	inserts := make([]time.Duration, 0)
 	for i := 0; i < num; i++ {
 		insertStart := time.Now()
 		if _, err := s.db.Exec(fmt.Sprintf("INSERT INTO %s (value) VALUES (0)", s.name)); err != nil {
 			return err
 		}
-		s.grapher.Save(Stat{
-			Time:  time.Now(),
-			Name:  "INSERT",
-			Value: time.Since(insertStart).Seconds() * 1000,
-		})
+		inserts = append(inserts, time.Since(insertStart))
 	}
+
+	var insertTot time.Duration
+	for _, ins := range inserts {
+		insertTot = insertTot + ins
+	}
+	insertTot = insertTot / time.Duration(len(inserts))
+	s.grapher.Save(Stat{
+		Time:  time.Now(),
+		Name:  "INSERT",
+		Value: insertTot.Seconds() * 1000,
+	})
 	return nil
 }
 
 func (s *SQLTest) Increment(nums []int) ([]int, error) {
+	selects := make([]time.Duration, 0)
+	updates := make([]time.Duration, 0)
 	for i := range nums {
 		selectStart := time.Now()
 		rows, err := s.db.Query(fmt.Sprintf("SELECT id, value FROM %s WHERE id = $1", s.name), i+1)
@@ -87,11 +97,7 @@ func (s *SQLTest) Increment(nums []int) ([]int, error) {
 			return s.Increment(nums)
 		}
 		defer rows.Close()
-		s.grapher.Save(Stat{
-			Time:  time.Now(),
-			Name:  "SELECT",
-			Value: time.Since(selectStart).Seconds() * 1000,
-		})
+		selects = append(selects, time.Since(selectStart))
 
 		rows.Next()
 
@@ -113,12 +119,32 @@ func (s *SQLTest) Increment(nums []int) ([]int, error) {
 			}
 			return s.Increment(nums)
 		}
-		s.grapher.Save(Stat{
-			Time:  time.Now(),
-			Name:  "UPDATE",
-			Value: time.Since(updateStart).Seconds() * 1000,
-		})
+		updates = append(updates, time.Since(updateStart))
 	}
+
+	var selectTot time.Duration
+	for _, sel := range selects {
+		selectTot = selectTot + sel
+	}
+	selectTot = selectTot / time.Duration(len(selects))
+
+	var updateTot time.Duration
+	for _, upd := range updates {
+		updateTot = updateTot + upd
+	}
+	updateTot = updateTot / time.Duration(len(updates))
+
+	s.grapher.Save(Stat{
+		Time:  time.Now(),
+		Name:  "SELECT",
+		Value: selectTot.Seconds() * 1000,
+	})
+
+	s.grapher.Save(Stat{
+		Time:  time.Now(),
+		Name:  "UPDATE",
+		Value: updateTot.Seconds() * 1000,
+	})
 
 	return nums, nil
 }

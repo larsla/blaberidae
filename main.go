@@ -177,13 +177,17 @@ func main() {
 		}
 	}()
 
+	lastPrinted := time.Now()
 	threads := len(dones)
 	for {
 		if threads < 1 {
 			fmt.Println("Done with threads")
 			return
 		}
-		fmt.Printf("Waiting for %v threads\n", threads)
+		if time.Since(lastPrinted) > time.Second*2 {
+			fmt.Printf("Waiting for %v threads\n", threads)
+			lastPrinted = time.Now()
+		}
 		for i, done := range dones {
 			select {
 			case <-done:
