@@ -101,7 +101,7 @@ func (g *Grapher) Render(name string) error {
 	for _, annotation := range g.events {
 		annotations = append(annotations, chart.Value2{
 			XValue: util.Time.ToFloat64(annotation.Time),
-			YValue: 400,
+			YValue: 80,
 			Label:  annotation.Name,
 		})
 	}
@@ -110,7 +110,7 @@ func (g *Grapher) Render(name string) error {
 	for _, gc := range gcStats.PauseEnd {
 		annotations = append(annotations, chart.Value2{
 			XValue: util.Time.ToFloat64(gc),
-			YValue: 450,
+			YValue: 90,
 			Label:  "GC",
 		})
 	}
@@ -120,10 +120,16 @@ func (g *Grapher) Render(name string) error {
 		series = append(series, chart.AnnotationSeries{
 			Annotations: annotations,
 		})
+		max := float64(100)
 		for _, l := range g.series[seriesName] {
+			for _, v := range l.YValues {
+				if v > max {
+					max = v
+				}
+			}
 			series = append(series, l)
 		}
-		err := g.render(fmt.Sprintf("%s-%s", seriesName, name), series)
+		err := g.render(fmt.Sprintf("%s-%s", seriesName, name), series, max)
 		if err != nil {
 			return err
 		}
@@ -132,7 +138,7 @@ func (g *Grapher) Render(name string) error {
 	return nil
 }
 
-func (g *Grapher) render(name string, series []chart.Series) error {
+func (g *Grapher) render(name string, series []chart.Series, max float64) error {
 	graph := chart.Chart{
 		Width:  2560,
 		Height: 1440,
@@ -160,7 +166,7 @@ func (g *Grapher) render(name string, series []chart.Series) error {
 			},
 			Range: &chart.ContinuousRange{
 				Min: 0,
-				Max: 500,
+				Max: max + (max / 5),
 			},
 		},
 		Series: series,

@@ -49,7 +49,7 @@ func (c *CockroachStats) run() {
 				Time:  t,
 				Name:  "COCKROACH",
 				Label: "ERROR",
-				Value: 100,
+				Value: 10,
 			})
 			continue
 		}
