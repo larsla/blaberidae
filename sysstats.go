@@ -50,12 +50,12 @@ func (s *SysStats) run() {
 			Label: "CPU",
 			Value: float64(percentage),
 		})
-		s.grapher.Save(Stat{
-			Time:  time.Now(),
-			Name:  "SYSTEM",
-			Label: "IOWait",
-			Value: float64(ioWait),
-		})
+		// s.grapher.Save(Stat{
+		// 	Time:  time.Now(),
+		// 	Name:  "SYSTEM",
+		// 	Label: "IOWait",
+		// 	Value: float64(ioWait),
+		// })
 
 		s.total = newTotal
 		s.idle = newIdle
