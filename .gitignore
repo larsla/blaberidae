@@ -1,0 +1,8 @@
+cockroach-data
+cockroach-latest*
+*.png
+*.log
+debug
+blaberidae
+*.svg
+*.tar.gz
