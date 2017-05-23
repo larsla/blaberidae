@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
@@ -36,7 +37,7 @@ func main() {
 		}
 	}
 
-	db1, err := Start("db1", binaryName, []string{"start", "--insecure", "--store=node1"})
+	db1, err := Start("db1", binaryName, []string{"start", "--insecure", "--store=node1", "--http-port=8083"})
 	if err != nil {
 		log.Println(err)
 		return
@@ -62,6 +63,8 @@ func main() {
 	defer db3.Stop()
 	defer os.RemoveAll("./node3")
 
+	nodes := []*Proc{db1, db2, db3}
+
 	createDB, err := Start("createDB", binaryName, []string{"sql", "--insecure", "-e", "CREATE DATABASE test;"})
 	if err != nil {
 		log.Println(err)
@@ -78,6 +81,10 @@ func main() {
 	defer grapher.Render(fmt.Sprintf("%s.png", time.Now().String()))
 	defer grapher.Stop()
 
+	stats := NewSysStats(grapher)
+	defer stats.Stop()
+
+	stop := false
 	start := false
 	dones := make([]chan bool, 0)
 	for i := 0; i < *numThreads; i++ {
@@ -95,29 +102,32 @@ func main() {
 				done <- true
 			}()
 
-			log.Println(mynum, "Starting test")
-
 			log.Println(mynum, "Creating table")
 			bench, err := NewTest(fmt.Sprintf("test%v", mynum), ports, grapher)
 			if err != nil {
 				log.Println(mynum, "NewTest", err)
 				return
 			}
-			log.Println(mynum, "Inserting rows")
+			log.Println(mynum, "Preparing table")
 			nums, err := bench.Create(10)
 			if err != nil {
 				log.Println(mynum, "Insert", err)
 				return
 			}
-			log.Printf("%v Inserted %v records\n", mynum, len(nums))
 
 			for {
 				if start {
 					break
 				}
+				if stop {
+					return
+				}
 				time.Sleep(time.Millisecond * 100)
 			}
 			for j := 0; j < *numIterations; j++ {
+				if stop {
+					return
+				}
 				_, err = bench.Increment(nums)
 				if err != nil {
 					log.Println(mynum, "Increment", err)
@@ -141,7 +151,7 @@ func main() {
 				}
 			}
 		}(i)
-		time.Sleep(time.Millisecond * 1000)
+		time.Sleep(time.Millisecond * 500)
 	}
 
 	start = true
@@ -150,8 +160,20 @@ func main() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
-	var db2restarted bool
-	var db3restarted bool
+	restartLock := false
+	restartChan := make(chan bool)
+	go func() {
+		for {
+			if stop {
+				return
+			}
+			time.Sleep(time.Second * time.Duration(rand.Intn(60)))
+			if !restartLock {
+				restartChan <- true
+			}
+		}
+	}()
+
 	threads := len(dones)
 	for {
 		if threads < 1 {
@@ -172,33 +194,23 @@ func main() {
 			case <-c:
 				fmt.Println("Got CTRL+C")
 				return
+			case <-restartChan:
+				if !restartLock {
+					restartLock = true
+					node := nodes[rand.Intn(len(nodes))]
+					grapher.Event(Event{
+						Time: time.Now(),
+						Name: "Restarted " + node.Name,
+					})
+					node.Restart()
+					go func() {
+						time.Sleep(time.Second * 2)
+						restartLock = false
+					}()
+				}
 			default:
 			}
 		}
-		time.Sleep(time.Second * 1)
-
-		if !db2restarted && threads < len(dones)-((len(dones)/4)/2) {
-			log.Println("Restarting db2")
-			db2restarted = true
-			grapher.Event(Event{
-				Time: time.Now(),
-				Name: "Restarted db2",
-			})
-			db2.Stop()
-			time.Sleep(time.Second * 1)
-			db2.Restart()
-		}
-
-		if !db3restarted && threads < len(dones)/3 {
-			log.Println("Restarting db3")
-			db3restarted = true
-			grapher.Event(Event{
-				Time: time.Now(),
-				Name: "Restarted db3",
-			})
-			db3.Stop()
-			time.Sleep(time.Second * 1)
-			db3.Restart()
-		}
+		time.Sleep(time.Millisecond * 100)
 	}
 }

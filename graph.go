@@ -18,6 +18,7 @@ import (
 type Stat struct {
 	Time  time.Time
 	Name  string
+	Label string
 	Value float64
 }
 
@@ -28,7 +29,7 @@ type Event struct {
 
 type Grapher struct {
 	Input      chan Stat
-	series     map[string]*chart.TimeSeries
+	series     map[string]map[string]*chart.TimeSeries
 	stop       chan bool
 	startTime  time.Time
 	stopTime   time.Time
@@ -39,7 +40,7 @@ type Grapher struct {
 func NewGrapher() *Grapher {
 	g := &Grapher{
 		Input:      make(chan Stat, 10000),
-		series:     make(map[string]*chart.TimeSeries),
+		series:     make(map[string]map[string]*chart.TimeSeries),
 		stop:       make(chan bool),
 		startTime:  time.Now(),
 		eventInput: make(chan Event, 10000),
@@ -65,15 +66,23 @@ func (g *Grapher) run() {
 			return
 		case stat := <-g.Input:
 			_, ok := g.series[stat.Name]
+			label := stat.Label
+			if label == "" {
+				label = stat.Name
+			}
 			if !ok {
-				g.series[stat.Name] = &chart.TimeSeries{
-					Name:    stat.Name,
+				g.series[stat.Name] = make(map[string]*chart.TimeSeries)
+			}
+			_, ok = g.series[stat.Name][label]
+			if !ok {
+				g.series[stat.Name][label] = &chart.TimeSeries{
+					Name:    label,
 					XValues: make([]time.Time, 0),
 					YValues: make([]float64, 0),
 				}
 			}
-			g.series[stat.Name].XValues = append(g.series[stat.Name].XValues, stat.Time)
-			g.series[stat.Name].YValues = append(g.series[stat.Name].YValues, stat.Value)
+			g.series[stat.Name][label].XValues = append(g.series[stat.Name][label].XValues, stat.Time)
+			g.series[stat.Name][label].YValues = append(g.series[stat.Name][label].YValues, stat.Value)
 		case event := <-g.eventInput:
 			g.events = append(g.events, event)
 		}
@@ -106,13 +115,15 @@ func (g *Grapher) Render(name string) error {
 		})
 	}
 
-	for _, s := range g.series {
+	for seriesName := range g.series {
 		series := make([]chart.Series, 0)
 		series = append(series, chart.AnnotationSeries{
 			Annotations: annotations,
 		})
-		series = append(series, s)
-		err := g.render(fmt.Sprintf("%s-%s", s.Name, name), series)
+		for _, l := range g.series[seriesName] {
+			series = append(series, l)
+		}
+		err := g.render(fmt.Sprintf("%s-%s", seriesName, name), series)
 		if err != nil {
 			return err
 		}
@@ -147,10 +158,10 @@ func (g *Grapher) render(name string, series []chart.Series) error {
 				}
 				return ""
 			},
-			Range: &chart.ContinuousRange{
-				Min: 0,
-				Max: 500,
-			},
+			// Range: &chart.ContinuousRange{
+			// 	Min: 0,
+			// 	Max: 500,
+			// },
 		},
 		Series: series,
 		Background: chart.Style{
