@@ -43,7 +43,7 @@ func (s *SysStats) run() {
 		newIdle, newTotal, newIOWait := s.readStat()
 
 		percentage := ((newTotal - s.total) - (newIdle - s.idle)) / (newTotal - s.total) * 100
-		ioWait := ((newTotal - s.total) - (newIdle - s.idle) - (s.iowait - newIOWait)) / (newTotal - s.total) * 100
+		// ioWait := ((newTotal - s.total) - (newIdle - s.idle) - (s.iowait - newIOWait)) / (newTotal - s.total) * 100
 		s.grapher.Save(Stat{
 			Time:  time.Now(),
 			Name:  "SYSTEM",
