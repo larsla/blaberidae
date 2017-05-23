@@ -19,6 +19,7 @@ func main() {
 
 	numThreads := flag.Int("threads", 10, "Number of threads to run")
 	numIterations := flag.Int("iterations", 10, "Number of iterations")
+	numNodes := flag.Int("nodes", 3, "Number of nodes")
 	killNodes := flag.Bool("kill_nodes", false, "Randomly kill nodes during run")
 	flag.Parse()
 
@@ -48,23 +49,22 @@ func main() {
 
 	time.Sleep(time.Second * 2)
 
-	db2, err := Start("db2", binaryName, []string{"start", "--insecure", "--store=node2", "--port=26258", "--http-port=8081", "--join=localhost:26257"})
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer db2.Stop()
-	defer os.RemoveAll("./node2")
+	ports := []string{"26257"}
+	nodes := []*Proc{}
+	for i := 2; i < *numNodes+1; i++ {
+		port := 26256 + i
+		httpPort := 8079 + i
+		dbX, err := Start(fmt.Sprintf("db%v", i), binaryName, []string{"start", "--insecure", fmt.Sprintf("--store=node%v", i), fmt.Sprintf("--port=%v", port), fmt.Sprintf("--http-port=%v", httpPort), "--join=localhost:26257"})
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer dbX.Stop()
+		defer os.RemoveAll(fmt.Sprintf("./node%v", i))
 
-	db3, err := Start("db3", binaryName, []string{"start", "--insecure", "--store=node3", "--port=26259", "--http-port=8082", "--join=localhost:26257"})
-	if err != nil {
-		log.Println(err)
-		return
+		ports = append(ports, fmt.Sprintf("%v", port))
+		nodes = append(nodes, dbX)
 	}
-	defer db3.Stop()
-	defer os.RemoveAll("./node3")
-
-	nodes := []*Proc{db2, db3}
 
 	createDB, err := Start("createDB", binaryName, []string{"sql", "--insecure", "-e", "CREATE DATABASE test;"})
 	if err != nil {
@@ -75,8 +75,6 @@ func main() {
 	if createDB.Process != nil && createDB.Running {
 		createDB.Process.Wait()
 	}
-
-	ports := []string{"26257", "26258", "26259"}
 
 	grapher := NewGrapher()
 	defer grapher.Render(fmt.Sprintf("%s.png", time.Now().String()))
@@ -138,7 +136,12 @@ func main() {
 					grapher.Save(Stat{
 						Time:  time.Now(),
 						Name:  "ERROR",
-						Value: 100,
+						Value: 10,
+					})
+					grapher.Save(Stat{
+						Time:  time.Now().Add(time.Millisecond * 10),
+						Name:  "ERROR",
+						Value: 0,
 					})
 					return
 				}
@@ -149,7 +152,12 @@ func main() {
 					grapher.Save(Stat{
 						Time:  time.Now(),
 						Name:  "ERROR",
-						Value: 100,
+						Value: 10,
+					})
+					grapher.Save(Stat{
+						Time:  time.Now().Add(time.Millisecond * 10),
+						Name:  "ERROR",
+						Value: 0,
 					})
 					return
 				}
